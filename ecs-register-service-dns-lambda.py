@@ -10,12 +10,15 @@ def lambda_handler(event, context):
 
 	# private hosted zone domain name and id
 	privatezone = 'ecs.internal'
-	zoneid = 'Route53PrivateHostedZoneID'
-	cluster = 'ECSClusterName'
+	zoneid = 'Z21CIYIW8RPLL1'
+	cluster = 'ecs-service-discovery-ECSCluster-ZE7FT679UUKV'
 
 	# grab load balancer and service names
-	lb = event['detail']['responseElements']['service']['loadBalancers'][0]['loadBalancerName']
+	tgArn = event['detail']['responseElements']['service']['loadBalancers'][0]['targetGroupArn']
 	service = event['detail']['responseElements']['service']['serviceName']
+	
+	print("tgArn:", tgArn)
+	print("Service name:", service)
 
 	# check we are working against the appropriate ecs cluster
 	if cluster != event['detail']['requestParameters']['cluster']:
@@ -24,13 +27,24 @@ def lambda_handler(event, context):
 		return 0
 
 	# grab DNS name for load balancer
-	elbclient = boto3.client('elb')
-	describelb = elbclient.describe_load_balancers(
-		LoadBalancerNames=[
-			lb
+	elbclient = boto3.client('elbv2')
+	describealbtg = elbclient.describe_target_groups(
+		TargetGroupArns=[
+			tgArn
 		]
 	)
-	lbcanonical = describelb['LoadBalancerDescriptions'][0]['DNSName']
+	print("describealbtg:", describealbtg)
+	
+	describealbArn = describealbtg['TargetGroups'][0]['LoadBalancerArns'][0]
+	print("describealbArn:", describealbArn)
+	
+	describealbcanonical = elbclient.describe_load_balancers(
+	    LoadBalancerArns=[
+	        describealbArn
+	    ]
+	)
+	albcanonical = describealbcanonical['LoadBalancers'][0]['DNSName']
+	print("albcanonical:", albcanonical)
 	servicerecord = service + "." + privatezone + "."
 
 	# grab type of event
@@ -55,7 +69,7 @@ def lambda_handler(event, context):
 							'TTL' : 60,
 							'ResourceRecords' : [
 								{
-									'Value' : lbcanonical
+									'Value' : albcanonical
 								}
 							]
 						}
@@ -82,7 +96,7 @@ def lambda_handler(event, context):
 							'TTL' : 60,
 							'ResourceRecords' : [
 								{
-									'Value' : lbcanonical
+									'Value' : albcanonical
 								}
 							]
 						}

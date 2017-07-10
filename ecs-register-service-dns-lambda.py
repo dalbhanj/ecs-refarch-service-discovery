@@ -10,16 +10,13 @@ def lambda_handler(event, context):
 
 	# private hosted zone domain name and id
 	privatezone = 'ecs.internal'
-	zoneid = 'Z21CIYIW8RPLL1'
-	cluster = 'ecs-service-discovery-ECSCluster-ZE7FT679UUKV'
+	zoneid = 'Route53PrivateHostedZoneID'
+	cluster = 'ECSClusterName'
 
 	# grab load balancer and service names
 	tgArn = event['detail']['responseElements']['service']['loadBalancers'][0]['targetGroupArn']
 	service = event['detail']['responseElements']['service']['serviceName']
 	
-	print("tgArn:", tgArn)
-	print("Service name:", service)
-
 	# check we are working against the appropriate ecs cluster
 	if cluster != event['detail']['requestParameters']['cluster']:
 
@@ -33,10 +30,8 @@ def lambda_handler(event, context):
 			tgArn
 		]
 	)
-	print("describealbtg:", describealbtg)
 	
 	describealbArn = describealbtg['TargetGroups'][0]['LoadBalancerArns'][0]
-	print("describealbArn:", describealbArn)
 	
 	describealbcanonical = elbclient.describe_load_balancers(
 	    LoadBalancerArns=[
